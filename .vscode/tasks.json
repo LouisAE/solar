@@ -1,0 +1,43 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cmake",
+			"label": "CMake Build",
+			"command": "build",
+			"targets": [
+				"all"
+			],
+			"preset": "${command:cmake.activeBuildPresetName}",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": [],
+			"detail": "CMake 编译"
+		},
+		{
+			"label": "Flash",
+			"type": "shell",
+			"command": "openocd",
+			"args": [
+				"-f",
+				"${cwd}\\flash.cfg"
+			],
+			"presentation": {
+				"reveal": "silent"
+			},
+			// 报错匹配
+			"problemMatcher": "$gcc",
+			"detail":"烧录程序到单片机"
+		},
+		{
+			"label": "Build and Flash",
+			"dependsOrder": "sequence",
+			"dependsOn": ["CMake Build", "Flash"],
+			"group": "build",
+			"problemMatcher": "$gcc",
+			"detail":"编译并烧录程序到单片机"
+		}
+	]
+}

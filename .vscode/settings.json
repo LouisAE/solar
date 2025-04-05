@@ -3,6 +3,7 @@
         "main.h": "c",
         "stdio.h": "c",
         "stdbool.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "stdlib.h": "c"
     }
 }

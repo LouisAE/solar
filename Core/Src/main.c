@@ -106,26 +106,33 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_ADCEx_Calibration_Start(&hadc1);
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buf, 2);
-  //if (ESP_Check_Status()) {
-  //  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
-  //}
-  //else {
-  //  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-  //}
-  uint8_t buf[3];
-  HAL_UART_Receive(&huart1, &buf[0], 1, 5000);
-  HAL_Delay(5000);
-  HAL_UART_Receive(&huart1, &buf[1], 1, 1000);
-  HAL_UART_Receive(&huart1, &buf[2], 1, 1000);
-  while (1)
-  {
-    /* code */
+  if (ESP_Check_Status() != 0) {
+    HAL_Delay(1000);
+    if (ESP_Check_Status() != 0) {
+      HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_SET);
+      Error_Handler();
+    }
   }
-  
 
-  /* USER CODE END 2 */
+  if (ESP_Check_WIFI_Status() != 2) {
+    if (ESP_Set_WIFI_Mode(1) != 0) {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
+      Error_Handler();
+    }
+      
+    if (ESP_Connect_To_AP(NULL, 0, NULL, 0) != 0) {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,GPIO_PIN_SET);
+      HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
+      Error_Handler();
+    }
+    HAL_Delay(5000);
+  }
+
+  if (ESP_Check_WIFI_Status() == 2)
+  {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+  }
+    /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -134,6 +141,10 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
+    HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }
@@ -260,7 +271,7 @@ static void MX_TIM2_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
-  // 系统频率:72MHz，定时器时钟:8MHz，默�???:8ms(8 * 8000)
+  // 系统频率:72MHz，定时器时钟:8MHz，默�????:8ms(8 * 8000)
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 9;

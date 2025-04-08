@@ -106,6 +106,7 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+
   if (ESP_Check_Status() != 0) {
     HAL_Delay(1000);
     if (ESP_Check_Status() != 0) {
@@ -125,26 +126,52 @@ int main(void)
       HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
       Error_Handler();
     }
-    HAL_Delay(5000);
   }
 
-  if (ESP_Check_WIFI_Status() == 2)
-  {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+  if (ESP_Check_WIFI_Status() != 2) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
+    Error_Handler();
   }
+
+  ESP_TCP_Disconnect();
+
+  HAL_Delay(500);
+
+  if (ESP_TCP_Connect((uint8_t*)"192.168.137.1", 13, 1025) != 0) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,GPIO_PIN_SET);
+    Error_Handler();
+  }
+
+  HAL_Delay(2000);
+
+  if (ESP_TCP_Check_Status() == 0) {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4,GPIO_PIN_SET);
+  }
+  else {
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,GPIO_PIN_SET);
+    Error_Handler();
+  }
+
     /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  uint8_t err_count = 0;
   while (1)
   {
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
-    HAL_Delay(500);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
-    HAL_Delay(500);
+    if (ESP_TCP_Send((uint8_t*)"Hello World\n", 12) != 0) {
+      err_count++;
+    }
+    else {
+      err_count = 0;
+    }
+    if (err_count == 3) {
+      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,GPIO_PIN_SET);
+      Error_Handler();
+    }
+    HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }

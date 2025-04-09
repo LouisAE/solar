@@ -78,9 +78,11 @@ static void MX_USART1_UART_Init(void);
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
   uint16_t adc_buf[2] = {0};
+  uint8_t uart_buf[128];
+  uint8_t tcp_retry = 0; // TCP重连次数
+  uint8_t wifi_retry = 0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -89,7 +91,32 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  int res = ESP_Init();
+  switch(res) {
+    case 0:{
+      Global_Stat = Normal;
+      break;
+    }
+    case 1:
+    case 2:
+    case 3:
+    case 5: {
+      Error_Handler();
+      break;
+    }
+    case 4: {
+      Global_Stat = WIFI_Disconnected;
+      break;
+    }
+    case 6: {
+      Global_Stat = TCP_Disconnected;
+      break;
+    }
+    default:{
+      Error_Handler();
+      break;
+    }
+  }
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -106,72 +133,61 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
-  if (ESP_Check_Status() != 0) {
-    HAL_Delay(1000);
-    if (ESP_Check_Status() != 0) {
-      HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_SET);
-      Error_Handler();
-    }
-  }
-
-  if (ESP_Check_WIFI_Status() != 2) {
-    if (ESP_Set_WIFI_Mode(1) != 0) {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
-      Error_Handler();
-    }
-      
-    if (ESP_Connect_To_AP(NULL, 0, NULL, 0) != 0) {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,GPIO_PIN_SET);
-      HAL_GPIO_WritePin(GPIOA,GPIO_PIN_4,GPIO_PIN_SET);
-      Error_Handler();
-    }
-  }
-
-  if (ESP_Check_WIFI_Status() != 2) {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
-    Error_Handler();
-  }
-
-  ESP_TCP_Disconnect();
-
-  HAL_Delay(500);
-
-  if (ESP_TCP_Connect((uint8_t*)"192.168.137.1", 13, 1025) != 0) {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,GPIO_PIN_SET);
-    Error_Handler();
-  }
-
-  HAL_Delay(2000);
-
-  if (ESP_TCP_Check_Status() == 0) {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4,GPIO_PIN_SET);
-  }
-  else {
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,GPIO_PIN_SET);
-    Error_Handler();
-  }
-
-    /* USER CODE END 2 */
+  /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint8_t err_count = 0;
   while (1)
   {
     /* USER CODE END WHILE */
     /* USER CODE BEGIN 3 */
-    if (ESP_TCP_Send((uint8_t*)"Hello World\n", 12) != 0) {
-      err_count++;
+    switch (Global_Stat) {
+
+      case Normal: {
+        memset(uart_buf, 0, 128);
+        if (HAL_UART_Receive_DMA(&huart1, uart_buf, 128) != HAL_OK)
+          Error_Handler();
+
+        while(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE));
+        HAL_UART_DMAStop(&huart1);
+
+        Handle_Message(uart_buf, 128);
+        break;
+      }
+
+      case TCP_Disconnected: { // TCP断开，尝试重连
+        // TCP断开的原因可能是WIFI断开了，同时，在重连的过程中WIFI有可能断开
+        if (ESP_Check_WIFI_Status() != 2) { 
+          Global_Stat = WIFI_Disconnected;
+          break;
+        }
+      
+        ESP_TCP_Connect((uint8_t*)"192.168.137.1", 13, 1025);
+        HAL_Delay(2000);
+
+        if (ESP_TCP_Check_Status() == 0) {
+          Global_Stat = Normal;
+          tcp_retry = 0;
+        }
+
+        tcp_retry++;
+        tcp_retry %= 16;
+        HAL_Delay(2 * tcp_retry * 1000); // 重试次数越多，间隔越长，最大为32s
+        break;
+      }
+
+      case WIFI_Disconnected:{ // WIFI断开，等待ESP模块重连
+        if (ESP_Check_WIFI_Status() == 2) {
+          wifi_retry = 0;
+          Global_Stat = TCP_Disconnected;
+        }
+        
+        wifi_retry++;
+        wifi_retry %= 16;
+        HAL_Delay(4 * wifi_retry * 1000); // 重试次数越多，间隔越长，最大为64s
+      }
     }
-    else {
-      err_count = 0;
-    }
-    if (err_count == 3) {
-      HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3,GPIO_PIN_SET);
-      Error_Handler();
-    }
-    HAL_Delay(1000);
+    
   }
   /* USER CODE END 3 */
 }
@@ -429,6 +445,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+  HAL_GPIO_WritePin(GPIOA,GPIO_PIN_3,GPIO_PIN_SET);
   while (1)
   {
   }

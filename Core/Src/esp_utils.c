@@ -11,7 +11,7 @@
 
 extern UART_HandleTypeDef huart1;
 
-uint8_t uart_buf[UART_BUF_SIZE];
+uint8_t esp_uart_buf[UART_BUF_SIZE];
 
 static int Wait_UART_Receive(UART_HandleTypeDef* huart, uint16_t timeout);
 /*
@@ -24,8 +24,8 @@ int ESP_Check_Status()
     if (HAL_UART_Transmit(&huart1, send_buf, 4, 1000) != HAL_OK) 
         return -1; // 串口发送错误
 
-    memset(uart_buf, 0, UART_BUF_SIZE);
-    if (HAL_UART_Receive_DMA(&huart1, uart_buf, 128) != HAL_OK)
+    memset(esp_uart_buf, 0, UART_BUF_SIZE);
+    if (HAL_UART_Receive_DMA(&huart1, esp_uart_buf, 128) != HAL_OK)
         return -2; // DMA启动失败
     
     if(Wait_UART_Receive(&huart1, 10) != 0) {
@@ -35,7 +35,7 @@ int ESP_Check_Status()
     HAL_UART_DMAStop(&huart1);
 
     // 跳过第一行（回显），无响应内容，直接解析
-    if (uart_buf[6] == 'O' && uart_buf[7] == 'K')
+    if (esp_uart_buf[6] == 'O' && esp_uart_buf[7] == 'K')
         return 0;
     else
         return 1;
@@ -49,8 +49,8 @@ int ESP_Check_WIFI_Status()
     if (HAL_UART_Transmit(&huart1, send_buf, 13, 1000) != HAL_OK)
         return -1; // 串口发送错误
 
-    memset(uart_buf, 0, UART_BUF_SIZE);
-    if (HAL_UART_Receive_DMA(&huart1, uart_buf, 128) != HAL_OK) 
+    memset(esp_uart_buf, 0, UART_BUF_SIZE);
+    if (HAL_UART_Receive_DMA(&huart1, esp_uart_buf, 128) != HAL_OK) 
         return -2;
     if(Wait_UART_Receive(&huart1, 10) != 0) {
         HAL_UART_DMAStop(&huart1);
@@ -60,8 +60,8 @@ int ESP_Check_WIFI_Status()
     HAL_UART_DMAStop(&huart1);
 
     // 如果正常返回，第23字节应当为状态码，一位数字介于0到4
-    if (uart_buf[22] >= '0' && uart_buf[22] <= '4')
-        return uart_buf[22] - '0';
+    if (esp_uart_buf[22] >= '0' && esp_uart_buf[22] <= '4')
+        return esp_uart_buf[22] - '0';
     else // 否则出错
         return -3;
     
@@ -78,8 +78,8 @@ int ESP_Set_WIFI_Mode(uint8_t mode)
         return -1; // 串口发送错误
     };
 
-    memset(uart_buf, 0, UART_BUF_SIZE);
-    if (HAL_UART_Receive_DMA(&huart1, uart_buf, 128) != HAL_OK)
+    memset(esp_uart_buf, 0, UART_BUF_SIZE);
+    if (HAL_UART_Receive_DMA(&huart1, esp_uart_buf, 128) != HAL_OK)
         return -2;
     if(Wait_UART_Receive(&huart1, 10) != 0) {
         HAL_UART_DMAStop(&huart1);
@@ -88,7 +88,7 @@ int ESP_Set_WIFI_Mode(uint8_t mode)
     
     HAL_UART_DMAStop(&huart1);
 
-    if (uart_buf[15] == 'O' && uart_buf[16] == 'K')
+    if (esp_uart_buf[15] == 'O' && esp_uart_buf[16] == 'K')
         return 0;
     else
         return 1;
@@ -168,8 +168,8 @@ int ESP_TCP_Check_Status()
         return -1;
     }
 
-    memset(uart_buf, 0, UART_BUF_SIZE);
-    if (HAL_UART_Receive_DMA(&huart1, uart_buf, UART_BUF_SIZE) != HAL_OK) {
+    memset(esp_uart_buf, 0, UART_BUF_SIZE);
+    if (HAL_UART_Receive_DMA(&huart1, esp_uart_buf, UART_BUF_SIZE) != HAL_OK) {
         return -2;
     }
 
@@ -180,7 +180,7 @@ int ESP_TCP_Check_Status()
 
     HAL_UART_DMAStop(&huart1);
 
-    if (uart_buf[14] != '+') {
+    if (esp_uart_buf[14] != '+') {
         return 1; // 未连接或其它错误 
     }
     else {
@@ -211,8 +211,8 @@ int ESP_TCP_Send(uint8_t* data, uint16_t data_len)
     if (HAL_UART_Transmit(&huart1, send_buf, 17, 100) != HAL_OK)
         return -1;
 
-    memset(uart_buf, 0, UART_BUF_SIZE);
-    if (HAL_UART_Receive_DMA(&huart1, uart_buf, 128) != HAL_OK)
+    memset(esp_uart_buf, 0, UART_BUF_SIZE);
+    if (HAL_UART_Receive_DMA(&huart1, esp_uart_buf, 128) != HAL_OK)
         return -2;
     
     if(Wait_UART_Receive(&huart1, 10) != 0) {
@@ -221,7 +221,7 @@ int ESP_TCP_Send(uint8_t* data, uint16_t data_len)
     }
     HAL_UART_DMAStop(&huart1);
 
-    if (uart_buf[19] != 'O' || uart_buf[20] != 'K') {
+    if (esp_uart_buf[19] != 'O' || esp_uart_buf[20] != 'K') {
         return 3; // 不允许发送
     }
 
@@ -229,8 +229,8 @@ int ESP_TCP_Send(uint8_t* data, uint16_t data_len)
         return -1;
     }
 
-    memset(uart_buf, 0, UART_BUF_SIZE);
-    if (HAL_UART_Receive_DMA(&huart1, uart_buf, 128) != HAL_OK) {
+    memset(esp_uart_buf, 0, UART_BUF_SIZE);
+    if (HAL_UART_Receive_DMA(&huart1, esp_uart_buf, 128) != HAL_OK) {
         return -2;
     }
     if (Wait_UART_Receive(&huart1, 10) != 0) {
@@ -244,9 +244,9 @@ int ESP_TCP_Send(uint8_t* data, uint16_t data_len)
     // 补充：这六行不是同时发过来的，实测一次接收只收到三行，不管了
     uint8_t count = 0;
     for (uint8_t i = 0; count < 6; i++) {
-        if (uart_buf[i] == '\n')
+        if (esp_uart_buf[i] == '\n')
             count++;
-        if (uart_buf[i] == '\0') // 到尾了
+        if (esp_uart_buf[i] == '\0') // 到尾了
             return 4; // 发送错误
     }
     */

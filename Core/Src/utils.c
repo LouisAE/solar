@@ -1,9 +1,14 @@
 #include "utils.h"
+#include "esp_utils.h"
 
 #include <stdio.h>
 #include <stdbool.h>
 
 extern UART_HandleTypeDef huart1;
+
+// 比较两个字节数组开头len个字节是否相同，必须满足len<=max(size(a),size(b))
+// 返回值：0,不相等; 1,相等
+static int headcmp(const uint8_t* a, const uint8_t* b, uint16_t len);
 
 int __io_putchar(int ch)
 {
@@ -45,4 +50,83 @@ int TIM_Delay(TIM_HandleTypeDef htim, uint32_t ms)
     }
     
     return 0;
+}
+
+// 初始化ESP模块的无线和TCP连接
+int ESP_Init() 
+{
+    if (ESP_Check_Status() != 0) {
+        HAL_Delay(1000);
+        if (ESP_Check_Status() != 0) {
+          return 1; // ESP模块可能工作不正常
+        }
+      }
+    
+      if (ESP_Check_WIFI_Status() != 2) {
+        if (ESP_Set_WIFI_Mode(1) != 0) {
+          return 2; // 设置WIFI模式失败，ESP模块可能工作不正常
+        }
+          
+        if (ESP_Connect_To_AP(NULL, 0, NULL, 0) != 0) {
+          return 3; // 发送连接指令失败，ESP模块可能工作不正常
+        }
+        HAL_Delay(5000);
+      }
+      
+      if (ESP_Check_WIFI_Status() != 2) {
+        return 4; // WIFI没能成功连接
+      }
+    
+      ESP_TCP_Disconnect();
+    
+      if (ESP_TCP_Connect((uint8_t*)"192.168.137.1", 13, 1025) != 0) {
+        return 5; // TCP连接指令发送失败，ESP模块可能工作不正常
+      }
+    
+      HAL_Delay(2000);
+    
+      if (ESP_TCP_Check_Status() == 0) {
+        return 0; // 初始化完毕
+      }
+      else {
+        return 6; // TCP连接失败
+      }
+}
+
+static int Handle_WIFI_Message(uint8_t* msg, uint16_t len) {
+    return 0;
+}
+
+// 处理通过TCP接收到的消息
+static int Handle_TCP_Message(uint8_t* msg, uint16_t len) {
+    return 0;
+}
+
+static int Handle_TCP_Closed_Message(uint8_t msg, uint16_t len) {
+    
+}
+
+int Handle_Message(uint8_t* msg, uint16_t len)
+{
+    if (headcmp((uint8_t*)"WIFI", msg, 4) != 0) {
+        return Handle_WIFI_Message(msg, len);
+    }
+
+    if (headcmp((uint8_t*)"+IPD", msg, 4) != 0) {
+        return Handle_TCP_Message(msg, len);
+    }
+
+    if (headcmp((uint8_t*)"CLOSED", msg, 6) != 0) {
+        return Handle_TCP_Closed_Message(msg, len);
+    }
+    return -1; // 无法处理的消息
+}
+
+static int headcmp(const uint8_t* a, const uint8_t* b, uint16_t len)
+{
+    for (int i = 0; i < len; i++) {
+        if(a[i] != b[i])
+            return 0;
+    }
+    return 1;
 }

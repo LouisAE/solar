@@ -50,6 +50,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     ./Core/Src/utils.c
     ./Core/Src/esp_utils.c
+    ./Core/Src/modbus.c
 )
 
 # Add include paths

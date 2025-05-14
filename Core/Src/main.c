@@ -78,9 +78,10 @@ static void MX_USART1_UART_Init(void);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
-  uint16_t adc_buf[2] = {0};
-  uint8_t uart_buf[128];
+  
+  uint8_t uart_buf[512];
   uint8_t tcp_retry = 0; // TCP重连次数
   uint8_t wifi_retry = 0;
   /* USER CODE END 1 */
@@ -91,6 +92,23 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+ 
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_ADC1_Init();
+  MX_TIM2_Init();
+  MX_USART1_UART_Init();
+  /* USER CODE BEGIN 2 */
   int res = ESP_Init();
   switch(res) {
     case 0:{
@@ -117,22 +135,11 @@ int main(void)
       break;
     }
   }
-  /* USER CODE END Init */
 
-  /* Configure the system clock */
-  SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_DMA_Init();
-  MX_ADC1_Init();
-  MX_TIM2_Init();
-  MX_USART1_UART_Init();
-  /* USER CODE BEGIN 2 */
+  extern uint8_t adc_buf[ADC_BUF_SIZE];
+  HAL_TIM_Base_Start_IT(&htim2);
+  // 第三个参数Length是数据数量
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buf, 2);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -140,29 +147,30 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
     switch (Global_Stat) {
 
       case Normal: {
-        memset(uart_buf, 0, 128);
-        if (HAL_UART_Receive_DMA(&huart1, uart_buf, 128) != HAL_OK)
+        memset(uart_buf, 0, 512);
+        if (HAL_UART_Receive_DMA(&huart1, uart_buf, 512) != HAL_OK)
           Error_Handler();
 
-        while(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE));
+        while(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE) == 0);
         HAL_UART_DMAStop(&huart1);
 
-        Handle_Message(uart_buf, 128);
+        Handle_Message(uart_buf, 512);
         break;
       }
 
-      case TCP_Disconnected: { // TCP断开，尝试重连
-        // TCP断开的原因可能是WIFI断开了，同时，在重连的过程中WIFI有可能断开
+      case TCP_Disconnected: { // TCP断开，尝试重�??
+        // TCP断开的原因可能是WIFI断开了，同时，在重连的过程中WIFI有可能断�??
         if (ESP_Check_WIFI_Status() != 2) { 
           Global_Stat = WIFI_Disconnected;
           break;
         }
       
-        ESP_TCP_Connect((uint8_t*)"192.168.137.1", 13, 1025);
+        ESP_TCP_Connect((uint8_t*)"192.168.137.1", 13, 1502);
         HAL_Delay(2000);
 
         if (ESP_TCP_Check_Status() == 0) {
@@ -172,7 +180,7 @@ int main(void)
 
         tcp_retry++;
         tcp_retry %= 16;
-        HAL_Delay(2 * tcp_retry * 1000); // 重试次数越多，间隔越长，最大为32s
+        HAL_Delay(2 * tcp_retry * 1000); // 重试次数越多，间隔越长，�??大为32s
         break;
       }
 
@@ -184,7 +192,7 @@ int main(void)
         
         wifi_retry++;
         wifi_retry %= 16;
-        HAL_Delay(4 * wifi_retry * 1000); // 重试次数越多，间隔越长，最大为64s
+        HAL_Delay(4 * wifi_retry * 1000); // 重试次数越多，间隔越长，�??大为64s
       }
     }
     
@@ -314,14 +322,14 @@ static void MX_TIM2_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
-  // 系统频率:72MHz，定时器时钟:8MHz，默�????:8ms(8 * 8000)
+  // 系统频率:72MHz，定时器时钟:8MHz，默�??????:8ms(8 * 8000)
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 9;
+  htim2.Init.Prescaler = 36000;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 64000;
+  htim2.Init.Period = 1000;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
     Error_Handler();

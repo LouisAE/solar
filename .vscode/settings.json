@@ -8,6 +8,9 @@
         "esp_utils.h": "c",
         "stm32f1xx_hal.h": "c",
         "tar.h": "c",
-        "string.h": "c"
-    }
+        "string.h": "c",
+        "_default_types.h": "c",
+        "modbus.h": "c"
+    },
+    "cortex-debug.variableUseNaturalFormat": true
 }

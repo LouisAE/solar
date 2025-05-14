@@ -1,5 +1,7 @@
 #include "modbus.h"
 
+#include <stddef.h>
+
 int ModBus_CRC(uint8_t* data, uint8_t length, uint16_t* result)
 {
     if (data == NULL || result == NULL || length == 0)
@@ -18,6 +20,6 @@ int ModBus_CRC(uint8_t* data, uint8_t length, uint16_t* result)
         }
     }
 
-    *result = (res >> 8) + (res << 8);
+    *result = res; // 大端序
     return 0;
 }
